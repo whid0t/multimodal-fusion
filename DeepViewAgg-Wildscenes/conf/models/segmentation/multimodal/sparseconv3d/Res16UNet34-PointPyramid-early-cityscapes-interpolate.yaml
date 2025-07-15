@@ -1,0 +1,11 @@
+defaults:
+  - ../../../__base__
+
+# Define constants to be used across the model configuration
+define_constants:
+  # Backbone 3D
+  in_feat_pts: ${data.feat_size}         # Number of input 3D features
+  in_feat_img: 4                   # Number of input 2D features (RGB + validity)
+  in_feat_map: 8                   # Number of input mapping features (padded to 8D)
+  # Inner channels of the 3D backbone
+  nc_conv_3d: ${vars.nc_base_hyper} 

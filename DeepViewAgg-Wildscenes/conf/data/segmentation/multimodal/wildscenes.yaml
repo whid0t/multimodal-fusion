@@ -1,0 +1,235 @@
+# @package data
+defaults:
+    - /data/default
+
+class: wildscenes.WildScenesDatasetMM
+task: segmentation.multimodal
+
+dataroot: /deepstore/datasets/fmt/kitti-360/61541v003/data/WildScenes/
+
+# Core parameters (these will override any base settings)
+radius: 5                        # Radius of 3D cylindrical samples
+eval_sample_res: 6               # Controls number of cylinders sampled in val and test set
+mapping_key: mapping_index       # hardcoded key used to sync 3D points and modality mappings
+sample_per_epoch: 10000           # Number of samples per epoch
+train_is_trainval: false         # Change this if you want to train on the whole trainval dataset
+mini: False                      # Change this if you want to use a reduced version of the dataset
+class_weight_method: ""          # Required by base config
+
+# 2D and 3D resolution settings
+resolution_2d: [1512, 1134]      # Reduced from [2016, 1512] to help with bucket management (3/4 scale)
+resolution_3d: 0.05              # Voxel size for the main 3D network backbone.
+map_images_voxel_size: 0.05      # A dedicated voxel size for the MapImages transform
+padding_2d: 8
+min_size_2d: 128
+exact_splatting_2d: True         # Restored to True for better accuracy with smaller point clouds
+proj_upscale: 1
+image_ratio: 5
+image_r_max: 15                  # Slightly reduced from 20. Maximum search radius (in pixels) when the mapper looks for pixels around the projected location of a point.
+image_k_swell: 1.3               # Slightly reduced from 1.5. Number of pixels to sample around the projected location of a point.
+image_d_swell: 1000000
+train_pixel_credit: 4
+test_pixel_credit: 4
+k_coverage: 2
+
+# Add pre-batch collate transforms as safety net for bucket overflow
+# Look into training without this
+train_pre_batch_collate_transform:
+  - transform: ClampBatchSize # This transform drops the sample from the batch if points are above a certain number
+    params:
+      num_points: 200000  # Reverted to a high-limit safeguard
+
+val_pre_batch_collate_transform:
+  - transform: ClampBatchSize
+    params:
+      num_points: 200000  # Reverted to a high-limit safeguard
+
+test_pre_batch_collate_transform:
+  - transform: ClampBatchSize
+    params:
+      num_points: 200000  # Reverted to a high-limit safeguard
+
+# WildScenes sequences
+# train: ["K-01", "V-02"]
+# val: ["K-03"]
+# test: ["V-01", "V-03"]
+# Added according to the datasplit created by setup_data.py by the WildScenes repo
+split_pickle: /home/s2955369/DeepViewAgg/dataset/WildScenes/data/processed/wildscenes_opt3d
+split_2droot: /home/s2955369/DeepViewAgg/dataset/WildScenes/data/processed/wildscenes_opt2d
+
+#####################################
+# 3D pre-transforms
+#####################################
+
+pre_transform:
+  - transform: SaveOriginalPosId  # Required so that one can recover the original point in the fused point cloud
+  - transform: GridSampling3D  # Samples on a grid
+    params:
+      size: ${data.resolution_3d}  
+  - transform: SaveOriginalPosId  # Required so that one can recover the multimodal mappings after the transforms
+    params:
+      key: mapping_index
+  - transform: PCAComputePointwise
+    params:
+      num_neighbors: 50  # heuristic: at least 30
+      use_faiss: False
+  - transform: EigenFeatures
+    params:
+      norm: True
+      linearity: True
+      planarity: True
+      scattering: True
+  - transform: RemoveAttributes
+    params:
+      attr_names: [eigenvalues, eigenvectors]
+
+#####################################
+# 3D transforms
+#####################################
+
+train_transforms:
+  - transform: RandomNoise
+    params:
+      sigma: 0.001
+  - transform: RandomRotate
+    params:
+      degrees: 180
+      axis: 2
+  - transform: RandomScaleAnisotropic
+    params:
+      scales: [0.8, 1.2]
+  - transform: RandomSymmetry
+    params:
+      axis: [True, False, False]
+  - transform: XYZFeature
+    params:
+      add_x: False
+      add_y: False
+      add_z: True
+  - transform: AddFeatsByKeys
+    params:
+      list_add_to_x: [False, True]
+      feat_names: [rgb, pos_z]
+      delete_feats: [True, True]
+  - transform: Center
+  - transform: GridSampling3D
+    params:
+      size: ${data.resolution_3d}  # Force 0.15m voxels (not 0.05)
+      quantize_coords: True
+      mode: "last"
+  - transform: ShiftVoxels
+
+test_transform:
+  - transform: XYZFeature
+    params:
+      add_x: False
+      add_y: False
+      add_z: True
+  - transform: AddFeatsByKeys
+    params:
+      list_add_to_x: [False, True]
+      feat_names: [rgb, pos_z]
+      delete_feats: [True, True]
+  - transform: Center
+  - transform: GridSampling3D
+    params:
+      size: ${data.resolution_3d}  # Force 0.15m voxels (not 0.05)
+      quantize_coords: True
+      mode: "last"
+
+val_transform: ${data.test_transform}
+
+#####################################
+# Multimodal transforms
+#####################################
+
+multimodal:
+
+    modality: image
+
+    pre_transform:
+        - transform: MapImages
+          params:
+                method: SplattingVisibility
+                ref_size: ${data.resolution_2d}
+                proj_upscale: ${data.proj_upscale}
+                use_cuda: False # Switched to False to avoid memory leaks in workers
+                voxel: ${data.map_images_voxel_size}  # Use new dedicated voxel size
+                r_max: ${data.image_r_max}
+                r_min: 0
+                k_swell: ${data.image_k_swell}
+                d_swell: ${data.image_d_swell}
+                exact: ${data.exact_splatting_2d}
+                camera: kitti360_perspective
+                cylinder: True
+                verbose: True
+        # - transform: NonStaticMask
+        #   params:
+        #         ref_size: ${data.resolution_2d}
+        #         proj_upscale: ${data.proj_upscale}
+        #         n_sample: 5
+        
+        - transform: NeighborhoodBasedMappingFeatures
+          params:
+                k: 50
+                voxel: ${data.resolution_3d}  # Use our 0.15m voxels consistently
+                density: True
+                occlusion: True
+                use_faiss: False
+                use_cuda: False
+        - transform: LoadImages
+          params:
+                ref_size: ${data.resolution_2d}
+                show_progress: True
+
+        - transform: GridSampleMultiModal
+          params:
+                size: ${data.resolution_3d}
+                quantize_coords: True
+                mode: mean
+
+    train_transforms:
+        - transform: SelectMappingFromPointId
+        - transform: PickImagesFromMappingArea
+          params:
+                use_bbox: ${data.exact_splatting_2d}
+        - transform: CropImageGroups
+          params:
+                padding: ${data.padding_2d}
+                min_size: ${data.min_size_2d}
+        - transform: PickImagesFromMemoryCredit
+          params:
+                img_size: ${data.resolution_2d}
+                n_img: ${data.train_pixel_credit}
+                k_coverage: ${data.k_coverage}
+        - transform: JitterMappingFeatures
+          params:
+                sigma: 0.003
+                clip: 0.01
+        - transform: ColorJitter
+          params:
+                  brightness: 0.2
+                  contrast: 0.2
+                  saturation: 0.2
+        - transform: RandomHorizontalFlip
+        - transform: ToFloatImage
+        - transform: Normalize
+
+    test_transforms:
+        - transform: SelectMappingFromPointId
+        - transform: PickImagesFromMappingArea
+          params:
+                use_bbox: ${data.exact_splatting_2d}
+        - transform: CropImageGroups
+          params:
+                padding: ${data.padding_2d}
+                min_size: ${data.min_size_2d}
+        - transform: PickImagesFromMemoryCredit
+          params:
+                img_size: ${data.resolution_2d}
+                n_img: ${data.test_pixel_credit}
+                k_coverage: ${data.k_coverage}
+        - transform: ToFloatImage
+        - transform: Normalize
+
+    val_transforms: ${data.multimodal.test_transforms}

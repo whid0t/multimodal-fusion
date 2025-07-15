@@ -1,0 +1,131 @@
+WildScenes_3D_Only_RGB:
+  class: sparseconv3d.APIModel
+  conv_type: "SPARSE"
+  backend: "minkowski" # It was trained with minkowski before, but even with torchsparse it works without problems
+  
+  backbone:
+    define_constants:
+      in_feat: 32
+      block: ResBlock
+    
+    down_conv:
+      module_name: ResNetDown
+      block: block
+      N: [ 0, 2, 2, 2, 2 ]
+      kernel_size: [ 3, 2, 2, 2, 2 ]
+      stride: [ 1, 2, 2, 2, 2 ]
+      down_conv_nn:
+        [
+          [ FEAT, in_feat ],      # 7 -> 32 channels
+          [ in_feat, in_feat ],   # 32 -> 32
+          [ in_feat, 2*in_feat ], # 32 -> 64
+          [ 2*in_feat, 4*in_feat ], # 64 -> 128
+          [ 4*in_feat, 8*in_feat ]  # 128 -> 256
+        ]
+    
+    up_conv:
+      block: block
+      module_name: ResNetUp
+      N: [ 1, 1, 1, 1, 1 ]
+      kernel_size: [ 2, 2, 2, 2, 3 ]
+      stride: [ 2, 2, 2, 2, 1 ]
+      up_conv_nn:
+        [
+          [ 8*in_feat, 4*in_feat, 4*in_feat ], # 256 -> 128
+          [ 4*in_feat, 2*in_feat, 2*in_feat ], # 128 -> 64
+          [ 2*in_feat, in_feat, 2*in_feat ],   # 64 -> 32 -> 64
+          [ 2*in_feat, in_feat, 2*in_feat ],   # 64 -> 32 -> 64
+          [ 2*in_feat, 0, in_feat ]            # 64 -> 32 (output features)
+        ]
+
+# Multimodal model
+WildScenes_LateLogitFusion_RGB:
+  class: sparseconv3d.LateLogitFusion
+  conv_type: "SPARSE"
+  backend: "torchsparse" # Cannot be overridden to minkowski at runtime - produces shape mismatch error
+  mode: mean
+  num_classes: 13 # WildScenes number of classes
+
+  backbone_3d:
+    define_constants:
+      in_feat: 32      # This is the feature dimension after the initial conv.
+                       # FEAT (actual input channels, 7 for WildScenes) -> initial_conv -> in_feat (32)
+      block: ResBlock
+    down_conv:
+      module_name: ResNetDown
+      block: block
+      N: [ 0, 2, 2, 2, 2 ] # initial_conv_blocks, stage1_blocks, stage2_blocks, stage3_blocks, stage4_blocks
+      kernel_size: [ 3, 2, 2, 2, 2 ] # k_init, k_stage1, k_stage2, k_stage3, k_stage4
+      stride: [ 1, 2, 2, 2, 2 ]      # s_init, s_stage1, s_stage2, s_stage3, s_stage4
+      down_conv_nn:                  # [in_channels_layer, out_channels_layer]
+        [ # Input to ResNetDown is raw point features (FEAT = 7 for WildScenes)
+          [ FEAT,       in_feat ],   # Initial Convolution: 7 -> 32 channels
+          [ in_feat,    in_feat ],   # Stage 1: 32 -> 32
+          [ in_feat,    2*in_feat ], # Stage 2: 32 -> 64
+          [ 2*in_feat,  4*in_feat ], # Stage 3: 64 -> 128
+          [ 4*in_feat,  8*in_feat ]  # Stage 4: 128 -> 256
+        ]
+    up_conv:
+      block: block
+      module_name: ResNetUp
+      N: [ 1, 1, 1, 1, 1 ]
+      kernel_size: [ 2, 2, 2, 2, 3 ]
+      stride: [ 2, 2, 2, 2, 1 ]
+      up_conv_nn:
+        [ # [in_skip_channels_from_down + in_upsampled_channels, intermediate_out_channels, final_out_channels_for_stage]
+          [ 8*in_feat, 4*in_feat, 4*in_feat ], # Upsample from 256 -> 128. Skip from Stage 3 (128). Output for this up-stage: 128
+          [ 4*in_feat, 2*in_feat, 4*in_feat ], # Upsample from 128 -> 64. Skip from Stage 2 (64). Output for this up-stage: 64
+          [ 4*in_feat, in_feat, 3*in_feat ],   # Upsample from 64 -> 32 -> 96. Skip from Stage 1 (32). Output for this up-stage: 96
+          [ 3*in_feat, in_feat, 3*in_feat ],   # Upsample from 96 -> 32 -> 96. Skip from Initial Conv (32). Output for this up-stage: 96
+          [ 3*in_feat, 0, 3*in_feat ]          # Final convolution layer. Output: 96 channels for classification
+        ]
+
+  backbone_no3d: # 2D image backbone configuration
+    define_constants:
+      in_feat: 32
+      in_feat_img: 3  # RGB input channels
+      block: ResBlock
+    
+    down_conv:
+      image:
+        down_conv:
+          module_name: ResNetDown
+          block: ResBlock
+          N: [ 0, 2, 2, 2, 2 ]  # Similar structure to 3D backbone
+          stride: [ 1, 2, 2, 2, 2 ]
+          kernel_size: [ 3, 2, 2, 2, 2 ]
+          down_conv_nn:
+            [
+              [ in_feat_img, in_feat ],    # RGB (3) -> 32 channels
+              [ in_feat, in_feat ],        # 32 -> 32
+              [ in_feat, 2*in_feat ],      # 32 -> 64
+              [ 2*in_feat, 4*in_feat ],    # 64 -> 128
+              [ 4*in_feat, 8*in_feat ],    # 128 -> 256
+            ]
+        up_conv:
+          module_name: ResNetUp
+          block: ResBlock
+          N: 1
+          kernel_size: [ 2, 2, 2, 2, 3 ]
+          stride: [ 2, 2, 2, 2, 1 ]
+          up_conv_nn:
+            [
+              [ 8*in_feat, 4*in_feat, 4*in_feat ],  # Upsample from 256 -> 128
+              [ 4*in_feat, 2*in_feat, 4*in_feat ],  # Upsample from 128 -> 64
+              [ 4*in_feat, in_feat, 3*in_feat ],    # Upsample from 64 -> 32
+              [ 3*in_feat, in_feat, 3*in_feat ],    # Upsample from 32 -> 32
+              [ 3*in_feat, 0, 3*in_feat ],          # Final conv layer -> 96 channels
+            ]
+        last_conv:
+          input_nc: 3*in_feat  # 96 channels from final up_conv stage
+          output_nc: 13        # WildScenes num_classes for logit output
+        atomic_pooling:
+          module_name: BimodalCSRPool
+          mode: max
+        view_pooling:
+          module_name: BimodalCSRPool
+          mode: mean
+        fusion:
+          module_name: BimodalFusion
+          mode: modality
+        branching_index: 0 

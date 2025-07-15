@@ -1,0 +1,93 @@
+# @package data
+defaults:
+    - /data/segmentation/default
+
+class: wildscenes.WildScenesDataset
+dataroot: /deepstore/datasets/fmt/kitti-360/61541v003/data/WildScenes/
+author_pickle_base_path: /home/s2955369/DeepViewAgg/dataset/WildScenes/data/processed/wildscenes_opt3d
+
+
+# WildScenes 3D-only configuration - adapted from working kitti360-sparse.yaml
+radius: 6                        # Radius of 3D cylindrical samples  
+eval_sample_res: ${data.radius}  # Controls number of cylinders sampled in val and test set
+resolution_3d: 0.05               # 3D voxel resolution
+mapping_key: mapping_index       # hardcoded key used to sync 3D points and modality mappings
+sample_per_epoch: 5000           # Number of samples per epoch
+train_is_trainval: false         # Use only train split, not trainval
+mini: False                      # Use full dataset
+
+
+
+pre_transform:
+    - transform: SaveOriginalPosId  # Required to recover original point positions
+    - transform: GridSampling3D     # Samples on a grid (same as KITTI-360)
+      params:
+            size: ${data.resolution_3d}
+    - transform: SaveOriginalPosId  # Required for mapping recovery
+      params:
+            key: ${data.mapping_key}
+    - transform: PCAComputePointwise  # Compute local geometric features
+      params:
+            num_neighbors: 50
+            use_faiss: False
+    - transform: EigenFeatures      # Extract geometric features from PCA
+      params:
+            norm: True
+            linearity: True
+            planarity: True
+            scattering: True
+    - transform: RemoveAttributes   # Clean up intermediate attributes
+      params:
+            attr_names: [eigenvalues, eigenvectors]
+
+train_transforms:
+  - transform: RandomNoise          # Same as KITTI-360
+    params:
+      sigma: 0.001
+  - transform: RandomRotate         # Same as KITTI-360
+    params:
+      degrees: 180
+      axis: 2
+  - transform: RandomScaleAnisotropic  # Same as KITTI-360
+    params:
+      scales: [0.8, 1.2]
+  - transform: RandomSymmetry       # Same as KITTI-360
+    params:
+      axis: [True, False, False]
+  - transform: XYZFeature           # Add Z-coordinate as feature, same as KITTI-360
+    params:
+      add_x: False
+      add_y: False
+      add_z: True
+  - transform: AddFeatsByKeys       # Adapted for WildScenes (no RGB, only pos_z)
+    params:
+      list_add_to_x: [True]         # Only one feature (pos_z)
+      feat_names: [pos_z]           # Only pos_z (no RGB available)
+      delete_feats: [True]          # Remove pos_z after combining
+  - transform: Center               # Same as KITTI-360
+  - transform: GridSampling3D       # Same as KITTI-360
+    params:
+      size: ${data.resolution_3d}
+      quantize_coords: True
+      mode: "last"
+  - transform: ShiftVoxels          # Same as KITTI-360
+
+test_transform:
+  - transform: XYZFeature           # Same as KITTI-360
+    params:
+      add_x: False
+      add_y: False
+      add_z: True
+  - transform: AddFeatsByKeys       # Adapted for WildScenes (no RGB, only pos_z)
+    params:
+      list_add_to_x: [True]         # Only one feature (pos_z)
+      feat_names: [pos_z]           # Only pos_z (no RGB available)
+      delete_feats: [True]          # Remove pos_z after combining
+  - transform: Center               # Same as KITTI-360
+  - transform: GridSampling3D       # Same as KITTI-360
+    params:
+      size: ${data.resolution_3d}
+      quantize_coords: True
+      mode: "last"
+
+val_transform: ${data.test_transform} 
