@@ -535,3 +535,6 @@ pip install pykeops
 
 python eval.py model_name=WildScenes_LateLogitFusion_RGB checkpoint_dir=/path/to/checkpoint/ voting_runs=1 tracker_options.full_res=True num_workers=2 batch_size=4 cuda=0 weight_name=WildScenes_LateLogitFusion_RGB.pt +data.dataroot=/path/to/dataroot/ +data.eval_sample_res=1 +selection_stage=test +pretty_print=False +multiprocessing_context=spawn
 ```
+
+## Acknowledgments
+We would like to thank the authors of DeepViewAgg, Wildscenes, and mmsegmentation for making their code publicly available.
