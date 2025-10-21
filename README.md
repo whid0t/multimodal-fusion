@@ -231,6 +231,7 @@ In order to run the validation with the official kitti360scripts and vizualize t
 ```shell
 git clone https://github.com/autonomousvision/kitti360Scripts.git
 # After the prediciton images are saved from the notebook, the performance can be assessed in the terminal with:
+export PYTHONPATH=/path/to/kitti360Scripts:$PYTHONPATH
 export KITTI360_DATASET=/path/to/dataset/root
 export KITTI360_RESULTS=/path/to/predictions
 python /home/jovyan/DeepViewAgg/dataset/2d/kitti360Scripts/kitti360scripts/evaluation/semantic_2d/evalPixelLevelSemanticLabeling.py
