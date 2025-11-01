@@ -45,6 +45,12 @@ class SegmentationTracker(BaseTracker):
         self._macc = 0
         self._miou = 0
         self._miou_per_class = {}
+        self._precision_macro = 0
+        self._recall_macro = 0
+        self._dice_macro = 0
+        self._precision_per_class = {}
+        self._recall_per_class = {}
+        self._dice_per_class = {}
 
     @staticmethod
     def detach_tensor(tensor):
@@ -90,6 +96,19 @@ class SegmentationTracker(BaseTracker):
             for i, v in enumerate(self._confusion_matrix.get_intersection_union_per_class()[0])
         }
 
+        # Precision / Recall / Dice (macro and per-class)
+        precision_per_class = self._confusion_matrix.get_precision_per_class()
+        recall_per_class = self._confusion_matrix.get_recall_per_class()
+        dice_per_class = self._confusion_matrix.get_dice_per_class()
+
+        self._precision_macro = 100 * self._confusion_matrix.get_macro_precision()
+        self._recall_macro = 100 * self._confusion_matrix.get_macro_recall()
+        self._dice_macro = 100 * self._confusion_matrix.get_macro_dice()
+
+        self._precision_per_class = {i: "{:.2f}".format(100 * v) for i, v in enumerate(precision_per_class)}
+        self._recall_per_class = {i: "{:.2f}".format(100 * v) for i, v in enumerate(recall_per_class)}
+        self._dice_per_class = {i: "{:.2f}".format(100 * v) for i, v in enumerate(dice_per_class)}
+
     def get_metrics(self, verbose=False) -> Dict[str, Any]:
         """ Returns a dictionnary of all metrics and losses being tracked
         """
@@ -98,9 +117,15 @@ class SegmentationTracker(BaseTracker):
         metrics["{}_acc".format(self._stage)] = self._acc
         metrics["{}_macc".format(self._stage)] = self._macc
         metrics["{}_miou".format(self._stage)] = self._miou
+        metrics["{}_precision".format(self._stage)] = self._precision_macro
+        metrics["{}_recall".format(self._stage)] = self._recall_macro
+        metrics["{}_dice".format(self._stage)] = self._dice_macro
 
         if verbose:
             metrics["{}_miou_per_class".format(self._stage)] = self._miou_per_class
+            metrics["{}_precision_per_class".format(self._stage)] = self._precision_per_class
+            metrics["{}_recall_per_class".format(self._stage)] = self._recall_per_class
+            metrics["{}_dice_per_class".format(self._stage)] = self._dice_per_class
         return metrics
 
     @property

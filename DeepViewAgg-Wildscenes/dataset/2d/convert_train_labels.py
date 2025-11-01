@@ -136,6 +136,8 @@ if __name__ == '__main__':
 
     # Walk through the input directory
     for subdir, dirs, files in os.walk(input_root_dir):
+        if subdir.endswith('confidence'):
+            continue
         for filename in files:
             if filename.lower().endswith('.png'):
                 id_image_path = os.path.join(subdir, filename)

@@ -96,6 +96,52 @@ class ConfusionMatrix:
     def count_gt(self, ground_truth):
         return self.confusion_matrix[ground_truth, :].sum()
 
+    # --- Added utilities for precision/recall/dice ---
+    def _tp_fp_fn_per_class(self):
+        cm = self.confusion_matrix
+        tp = np.diagonal(cm).astype(float)
+        fp = np.sum(cm, axis=1).astype(float) - tp  # predicted as class i but not actually i
+        fn = np.sum(cm, axis=0).astype(float) - tp  # actual class i predicted as others
+        return tp, fp, fn
+
+    def get_precision_per_class(self):
+        tp, fp, _ = self._tp_fp_fn_per_class()
+        denom = tp + fp
+        precision = np.divide(tp, np.maximum(denom, 1e-8))
+        return precision
+
+    def get_recall_per_class(self):
+        tp, _, fn = self._tp_fp_fn_per_class()
+        denom = tp + fn
+        recall = np.divide(tp, np.maximum(denom, 1e-8))
+        return recall
+
+    def get_f1_per_class(self):
+        precision = self.get_precision_per_class()
+        recall = self.get_recall_per_class()
+        denom = precision + recall
+        f1 = np.divide(2 * precision * recall, np.maximum(denom, 1e-8))
+        return f1
+
+    def get_dice_per_class(self):
+        # Dice for multi-class equals F1 computed per class on one-vs-all
+        return self.get_f1_per_class()
+
+    def get_macro_precision(self):
+        values = self.get_precision_per_class()
+        return float(np.mean(values)) if values.size else 0.0
+
+    def get_macro_recall(self):
+        values = self.get_recall_per_class()
+        return float(np.mean(values)) if values.size else 0.0
+
+    def get_macro_f1(self):
+        values = self.get_f1_per_class()
+        return float(np.mean(values)) if values.size else 0.0
+
+    def get_macro_dice(self):
+        return self.get_macro_f1()
+
 
 def save_confusion_matrix(cm, path2save, ordered_names):
     import seaborn as sns
