@@ -10,7 +10,7 @@ For training DeepLabV3+ for the KITTI-360 part:
 - Cuda 11.3
 
 ## Installation - KITTI-360
-The first part of the thesis (comparison on KITTI-360) was conducted in the Jupyter server of the University of Twente, using a GPU server with an A10 GPU with 24GB VRAM. Installation steps are adapted for the Jupyter sever from the official ```install.sh``` from the official [DeepViewAgg repository](https://github.com/drprojects/DeepViewAgg/tree/release):
+The first part of the paper (comparison on KITTI-360) was conducted in the Jupyter server of the University of Twente, using a GPU server with an A10 GPU with 24GB VRAM. Installation steps are adapted for the Jupyter sever from the official ```install.sh``` from the official [DeepViewAgg repository](https://github.com/drprojects/DeepViewAgg/tree/release):
 
 ### Create and activate conda environemnt<br>
 ```shell
@@ -538,4 +538,4 @@ python eval.py model_name=WildScenes_LateLogitFusion_RGB checkpoint_dir=/path/to
 ```
 
 ## Acknowledgments
-We would like to thank the authors of DeepViewAgg, Wildscenes, and mmsegmentation for making their code publicly available.
+We would like to thank the authors of KITTI-360, DeepViewAgg, Wildscenes, and mmsegmentation for making their code publicly available.
