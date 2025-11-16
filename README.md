@@ -1,5 +1,5 @@
 ## Requirements
-For DeepViewAgg framework and WildScenes part of thesis:
+For DeepViewAgg framework and WildScenes part of the paper:
 - Python 3.8
 - Pytorch 1.7.1
 - Cuda 11.0
@@ -194,7 +194,7 @@ For the 2D-only model more freedom is provided.
 ## Training - KITTI-360
 
 ### 3D-only training
-For the 3D-only training a script is provided inside ```/DeepViewAgg/train-3donly.sh```. The current configuration is what was used in the thesis and sucessfully completed in 90 hours. You can change the ```DATA_ROOT``` parameter if needed. Run training with ```bash train-3donly.sh```.
+For the 3D-only training a script is provided inside ```/DeepViewAgg/train-3donly.sh```. The current configuration is what was used in the paper and sucessfully completed in 90 hours. You can change the ```DATA_ROOT``` parameter if needed. Run training with ```bash train-3donly.sh```.
 
 ### 2D-only training
 For the 2D only training the data for 2d was moved into ```DeepViewAgg/dataset/2d```. So the folder contained the raw 2D data, semantics 2d and the corresponding confidence for the labels. Training was done with the files ```mmsegmentation_kitti-360/configs/kitti360/deeplabv3plus_r18-d8_512x1024_20k_k360.py``` (which is the model configuration) and ```mmsegmentation_kitti-360/mmseg/datasets/kitti360_pair.py```. Before running training the 2D data was converted from label ID to train ID with the script ```DeepViewAgg-WildScenes/dataset/2d/convert_train_label.py ```. Training is done with the mmsegmentation's framework file ```mmsegmentation_kitti-360/tools/train.py```:
@@ -220,7 +220,7 @@ The model was used pretrained with the checkpoint provided in the DeepViewAgg re
 ## Evaluation - KITTI-360
 
 ### 3D-only evaluation
-Command used to obtain the results listed in the thesis:
+Command used to obtain the results listed in the paper:
 ```shell
 cd DeepViewAgg
 python -W ignore eval.py model_name=Res16UNet34 checkpoint_dir=path/to/checkpoint/from/training voting_runs=1 tracker_options.full_res=True tracker_options.make_submission=False precompute_multi_scale=False num_workers=8 batch_size=6 cuda=0 weight_name=Res16UNet34.pt +data.eval_sample_res=1 +data.dataroot=/home/jovyan/DeepViewAgg/dataset +pretty_print=False
@@ -238,13 +238,13 @@ python /home/jovyan/DeepViewAgg/dataset/2d/kitti360Scripts/kitti360scripts/evalu
 ```
 
 ### 2D-3D evaluation
-Command used to obtain the results listed in the thesis:
+Command used to obtain the results listed in the paper:
 ```shell
 python -W ignore eval.py \model_name=Res16UNet34-PointPyramid-early-cityscapes-interpolate \checkpoint_dir=/home/jovyan/DeepViewAgg/checkpoints/  \voting_runs=1 \tracker_options.full_res=True \tracker_options.make_submission=False \precompute_multi_scale=False \num_workers=8 \batch_size=6 \cuda=0  \weight_name=latest \+data.eval_sample_res=1 \+data.dataroot=/home/jovyan/DeepViewAgg/dataset \+pretty_print=False
 ```
 
 ## Instalation - WildScenes
-This part of the thesis was done on the HPC cluster, available at the University, so in some way it differs from the one for the Jupyter server. For this to be properly configured you need to be at a node with a GPU. For the thesis, the GPU A40 was tested and used. For loading the conda and cuda modules, please refer to the [HPC Wiki](https://hpc.wiki.utwente.nl/eemcs-hpc:software).
+This part of the paper was done on the HPC cluster, available at the University, so in some way it differs from the one for the Jupyter server. For this to be properly configured you need to be at a node with a GPU. For the thesis, the GPU A40 was tested and used. For loading the conda and cuda modules, please refer to the [HPC Wiki](https://hpc.wiki.utwente.nl/eemcs-hpc:software).
 
 ### Adding proxies
 In order for proper access to online packages the proxies should be configured as per the documentation
