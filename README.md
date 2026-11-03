@@ -243,19 +243,10 @@ Command used to obtain the results listed in the paper:
 python -W ignore eval.py \model_name=Res16UNet34-PointPyramid-early-cityscapes-interpolate \checkpoint_dir=/home/jovyan/DeepViewAgg/checkpoints/  \voting_runs=1 \tracker_options.full_res=True \tracker_options.make_submission=False \precompute_multi_scale=False \num_workers=8 \batch_size=6 \cuda=0  \weight_name=latest \+data.eval_sample_res=1 \+data.dataroot=/home/jovyan/DeepViewAgg/dataset \+pretty_print=False
 ```
 
-## Instalation - WildScenes
-This part of the paper was done on the HPC cluster, available at the University, so in some way it differs from the one for the Jupyter server. For this to be properly configured you need to be at a node with a GPU. For the thesis, the GPU A40 was tested and used. For loading the conda and cuda modules, please refer to the [HPC Wiki](https://hpc.wiki.utwente.nl/eemcs-hpc:software).
+## Installation - WildScenes
+This part of the paper was done on the HPC cluster, available at the University, so in some way it differs from the one for the Jupyter server. For the paper, the GPU A40 was tested and used. 
 
-### Adding proxies
-In order for proper access to online packages the proxies should be configured as per the documentation
-```shell
-export HTTP_PROXY=http://proxy.utwente.nl:3128
-export HTTPS_PROXY=http://proxy.utwente.nl:3128
-export http_proxy=http://proxy.utwente.nl:3128
-export https_proxy=http://proxy.utwente.nl:3128
-```
-
-### Create and activate conda environemnt<br>
+### Create and activate conda environment<br>
 ```shell
 conda create -n deepviewagg python=3.8
 conda activate deepviewagg
