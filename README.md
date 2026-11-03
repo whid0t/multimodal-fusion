@@ -1,16 +1,49 @@
+# **Feature-level Fusion of 2D Images and 3D LiDAR Point Clouds for Semantic Segmentation**
+Research code accompanying the paper, which was accepted for poster presentation at BNAIC/BeNeLearn 2025.
+
+This repository contains the code and configurations for investigating semantic segmentation using 2D-only, 3D-only, and multimodal 2D-3D approaches on the KITTI-360 and WildScenes datasets. The experiments build upon the DeepViewAgg framework and MMSegmentation, comparing different segmentation approaches in urban and natural settings. The research began as my bachelor's thesis at the University of Twente and was later developed into a collaborative conference contribution with a PhD researcher and the thesis supervisor, including improvements to the statistical validity across the 2D-only modality.
+
+**Authors:** Andrey Nikolov, Muhammad Shoaib Sarwar, and Faizan Ahmed <br>
+**Conference:** BNAIC/BeNeLearn 2025, Namur, Belgium <br>
+**Paper:** [View PDF](https://openreview.net/pdf?id=7Hq29UxiDe) <br>
+
+## Results
+### KITTI-360 - urban environment
+The early fusion approach showed improvements in the segmentation of small, geometrically distinctive classes, particularly pole and traffic light. These classes benefited from combining geometric information from LiDAR with visual features from camera images. However, fusion did not consistently outperform the single-modality models. The 2D-only model performed better on most large and background classes, where visual features such as color and texture were more informative. An exception was the building class, where fusion improved IoU by 5.6 points over the 2D baseline. For the bicycle class, fusion achieved 19.2 IoU, performing 10.3 points below the 3D-only baseline.
+
+### WildScenes - natural environment
+The late fusion approach achieved an overall improvement of 5.0 mIoU points compared to the stronger 3D-only baseline. The largest improvements were observed in classes benefiting from both geometric structure and visual appearance, particularly bush and structure. For the bush class, fusion increased IoU by 11.2 points compared to the 2D-only model and 17.6 points compared to the 3D-only model. However, fusion did not improve every class. For fence, the multimodal model performed 8.6 IoU points below the 3D-only baseline, indicating limitations when visual features are unreliable.
+
+**For complete results and discussion, please refer to the paper.**
+
+## Table of Contents
+
+- [Requirements](#requirements)
+- [Installation - KITTI-360](#installation---kitti-360)
+- [Installation for mmsegmentation for 2D-only model](#installation-for-mmsegmentation-for-2d-only-model)
+- [Dataset setup KITTI-360](#dataset-setup)
+- [Training - KITTI-360](#training---kitti-360)
+- [Evaluation - KITTI-360](#evaluation---kitti-360)
+- [Installation - WildScenes](#installation---wildscenes)
+- [Installation for mmsegmentation for 2D-only model](#installation-for-mmsegmentation-for-2d-only-model-1)
+- [Dataset setup WildScenes](#dataset-setup-1)
+- [Training - WildScenes](#training---wildscenes)
+- [Evaluation - WildScenes](#evaluation---wildscenes)
+- [Acknowledgments](#acknowledgments)
+
 ## Requirements
 For DeepViewAgg framework and WildScenes part of the paper:
 - Python 3.8
 - Pytorch 1.7.1
-- Cuda 11.0
+- CUDA 11.0
 
 For training DeepLabV3+ for the KITTI-360 part:
 - Python 3.8
 - Pytorch 1.12
-- Cuda 11.3
+- CUDA 11.3
 
 ## Installation - KITTI-360
-The first part of the paper (comparison on KITTI-360) was conducted in the Jupyter server of the University of Twente, using a GPU server with an A10 GPU with 24GB VRAM. Installation steps are adapted for the Jupyter sever from the official ```install.sh``` from the official [DeepViewAgg repository](https://github.com/drprojects/DeepViewAgg/tree/release):
+The first part of the paper (comparison on KITTI-360) was conducted on the Jupyter server of the University of Twente, using a GPU server with an A10 GPU with 24GB VRAM. Installation steps are adapted for the Jupyter server from the official ```install.sh``` from the official [DeepViewAgg repository](https://github.com/drprojects/DeepViewAgg/tree/release):
 
 ### Create and activate conda environemnt<br>
 ```shell
@@ -397,22 +430,17 @@ nano /path/to/conda/envs/wildscenes/python3.8/site-packages/mmcv/utils/config.py
 Go into the function "format_dict" and remove the flag ```verify=True``` on the line ```(text, _ = FormatCode(text, style_config=yapf_style, verify=True)```
 
 ## Dataset setup
-Please follow the steps to download the dataset defined in the [WildScenes repo](https://github.com/csiro-robotics/WildScenes/tree/main). You would need to contact HPC administration about storing this on the cluster. Do not forget to run the script ```setup_data.py``` to correctly define the pickles for the data.
+Please follow the steps to download the dataset defined in the [WildScenes repo](https://github.com/csiro-robotics/WildScenes/tree/main). Do not forget to run the script ```setup_data.py``` to correctly define the pickles for the data.
 
 ## Training - WildScenes
 
 ### 3D-only training
-The model configuration is defined in ```DeepViewAgg-Wildscenes/conf/models/segmentation/multimodal/wildscenes_custom.yaml```. In order to train it, we need to be in the ```deepviewagg``` conda environment, and on a GPU node (or submit an sbatch job) and run the following command:
+The model configuration is defined in ```DeepViewAgg-Wildscenes/conf/models/segmentation/multimodal/wildscenes_custom.yaml```. In order to train it, we need to be in the ```deepviewagg``` conda environment:
 ```shell
 conda activate deepviewagg
 module load nvidia/cuda-11.0
 module load miniconda3/3.8
 cd DeepViewAgg-WildScenes
-# For whatever reason pykeops needs to be reinstalled before initiating training/evaluation on different nodes, so just to be sure run this
-export HTTP_PROXY=http://proxy.utwente.nl:3128
-export HTTPS_PROXY=http://proxy.utwente.nl:3128
-export http_proxy=http://proxy.utwente.nl:3128
-export https_proxy=http://proxy.utwente.nl:3128
 
 export CC=/usr/bin/gcc-9
 export CXX=/usr/bin/g++-9
@@ -468,11 +496,6 @@ conda activate deepviewagg
 module load nvidia/cuda-11.0
 module load miniconda3/3.8
 cd DeepViewAgg-WildScenes
-# For whatever reason pykeops needs to be reinstalled before initiating training/evaluation on different nodes, so just to be sure run this
-export HTTP_PROXY=http://proxy.utwente.nl:3128
-export HTTPS_PROXY=http://proxy.utwente.nl:3128
-export http_proxy=http://proxy.utwente.nl:3128
-export https_proxy=http://proxy.utwente.nl:3128
 
 export CC=/usr/bin/gcc-9
 export CXX=/usr/bin/g++-9
@@ -507,11 +530,6 @@ conda activate deepviewagg
 module load nvidia/cuda-11.0
 module load miniconda3/3.8
 cd DeepViewAgg-WildScenes
-# For whatever reason pykeops needs to be reinstalled before initiating training/evaluation on different nodes, so just to be sure run this
-export HTTP_PROXY=http://proxy.utwente.nl:3128
-export HTTPS_PROXY=http://proxy.utwente.nl:3128
-export http_proxy=http://proxy.utwente.nl:3128
-export https_proxy=http://proxy.utwente.nl:3128
 
 export CC=/usr/bin/gcc-9
 export CXX=/usr/bin/g++-9
